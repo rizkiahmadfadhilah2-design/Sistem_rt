@@ -82,22 +82,32 @@ router.get("/grafik/usia", verifyToken, async (req, res) => {
   }
 });
 
-/* ================= GRAFIK KAS ================= */
 router.get("/grafik/kas", verifyToken, async (req, res) => {
   try {
     const [data] = await db.promise().query(`
-      SELECT DATE_FORMAT(tanggal, '%b %Y') AS bulan,
-             SUM(CASE WHEN jenis='pemasukan' THEN jumlah ELSE 0 END) AS pemasukan,
-             SUM(CASE WHEN jenis='pengeluaran' THEN jumlah ELSE 0 END) AS pengeluaran
+      SELECT 
+        DATE_FORMAT(tanggal, '%b %Y') AS bulan,
+        SUM(CASE WHEN jenis='pemasukan' THEN jumlah ELSE 0 END) AS pemasukan,
+        SUM(CASE WHEN jenis='pengeluaran' THEN jumlah ELSE 0 END) AS pengeluaran,
+        SUM(
+          CASE 
+            WHEN jenis='pemasukan' THEN jumlah 
+            WHEN jenis='pengeluaran' THEN -jumlah 
+            ELSE 0 
+          END
+        ) AS saldo
       FROM kas
-      GROUP BY DATE_FORMAT(tanggal, '%Y-%m')
-      ORDER BY MIN(tanggal)
-    `);
-    res.json(data);
-  } catch {
-    res.status(500).json({ error: "Gagal mengambil grafik kas" });
+      GROUP BY YEAR(tanggal), MONTH(tanggal)
+      ORDER BY YEAR(tanggal), MONTH(tanggal)
+    `)
+
+    res.json(data)
+  } catch (err) {
+    console.error("GRAFIK KAS ERROR:", err)
+    res.status(500).json({ error: "Gagal mengambil grafik kas" })
   }
-});
+})
+
 
 /* ================= TAMBAHAN BARU ================= */
 
